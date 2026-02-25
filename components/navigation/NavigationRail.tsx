@@ -124,6 +124,7 @@ export function NavigationRail({
         accentColor={theme.colors.accent.primary}
         theme={theme}
         badgeCount={!isHomeActive && homeNotificationCount ? homeNotificationCount : undefined}
+        accessibilityLabel="Home"
       >
         <UmbraIcon
           size={22}
@@ -139,6 +140,7 @@ export function NavigationRail({
           accentColor={theme.colors.accent.primary}
           theme={theme}
           ringProgress={uploadRingProgress}
+          accessibilityLabel="Files"
         >
           <FolderIcon
             size={22}
@@ -190,6 +192,7 @@ export function NavigationRail({
                   accentColor={community.accentColor}
                   theme={theme}
                   iconUrl={community.iconUrl}
+                  accessibilityLabel={community.name}
                 >
                   <Image
                     source={defaultCommunityIcon}
@@ -207,6 +210,7 @@ export function NavigationRail({
           active={false}
           onPress={onCreateCommunity}
           theme={theme}
+          accessibilityLabel="Create community"
         >
           <PlusIcon
             size={20}
@@ -233,6 +237,8 @@ export function NavigationRail({
             <View style={{ marginBottom: 4, width: '100%', alignItems: 'center' }}>
               <Pressable
                 onPress={onAvatarPress}
+                accessibilityRole="button"
+                accessibilityLabel="Account"
                 style={({ pressed }) => ({
                   width: ICON_SIZE,
                   height: ICON_SIZE,
@@ -267,6 +273,7 @@ export function NavigationRail({
               onPress={onNotificationsPress}
               theme={theme}
               badgeCount={notificationCount || undefined}
+              accessibilityLabel="Notifications"
             >
               <BellIcon
                 size={20}
@@ -279,6 +286,7 @@ export function NavigationRail({
             active={false}
             onPress={onOpenSettings}
             theme={theme}
+            accessibilityLabel="Settings"
           >
             <SettingsIcon
               size={20}
@@ -307,9 +315,11 @@ interface RailItemProps {
   iconUrl?: string;
   /** Optional notification badge count rendered on the icon */
   badgeCount?: number;
+  /** Accessibility label for the button (used by screen readers and E2E tests) */
+  accessibilityLabel?: string;
 }
 
-function RailItem({ active, onPress, accentColor, theme, children, ringProgress, iconUrl, badgeCount }: RailItemProps) {
+function RailItem({ active, onPress, accentColor, theme, children, ringProgress, iconUrl, badgeCount, accessibilityLabel }: RailItemProps) {
   const showRing = ringProgress != null && ringProgress > 0 && ringProgress < 100;
   const { animatedValue: indicatorAnim, shouldRender: showIndicator } = useAnimatedToggle(active, { duration: 150 });
 
@@ -385,6 +395,8 @@ function RailItem({ active, onPress, accentColor, theme, children, ringProgress,
       >
         <Pressable
           onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
           style={({ pressed }) => ({
             width: ICON_SIZE,
             height: ICON_SIZE,

@@ -5,107 +5,60 @@
  * Both connect to the production relay at relay.umbra.chat.
  */
 
-import { test, expect, type BrowserContext, type Page } from '@playwright/test';
-
-/**
- * Helper: Create an identity in the given page and return the DID.
- */
-async function createIdentity(page: Page, name: string): Promise<string> {
-  await page.goto('/');
-  await expect(page.getByText('Create New Wallet')).toBeVisible({ timeout: 15_000 });
-  await page.getByText('Create New Wallet').click();
-  await page.getByPlaceholder('Enter your name').fill(name);
-  await page.getByText('Continue').click();
-  await expect(page.getByText('Your Recovery Phrase')).toBeVisible({ timeout: 30_000 });
-  await page.getByText('Continue').click();
-  await page.getByText('I have written down my recovery phrase').click();
-  await page.getByText('Continue').click();
-  const skipBtn = page.getByText('Skip');
-  if (await skipBtn.isVisible()) await skipBtn.click();
-  await expect(page.getByText('Wallet Created!')).toBeVisible({ timeout: 10_000 });
-
-  // Extract DID from the success card
-  const didElement = page.locator('text=/did:key:/');
-  const didText = await didElement.textContent();
-  const did = didText?.match(/did:key:\S+/)?.[0] ?? '';
-
-  await page.getByText('Get Started').click();
-  await expect(page.getByText('Welcome to Umbra')).toBeVisible({ timeout: 15_000 });
-
-  return did;
-}
+import {
+  test, expect,
+  createIdentity,
+  sendFriendRequest,
+  acceptFriendRequest,
+  type TwoUserFixture,
+  setupTwoUsers,
+  teardownTwoUsers,
+  RELAY_DELIVERY_TIMEOUT,
+} from './fixtures';
 
 test.describe('Friends', () => {
-  let contextA: BrowserContext;
-  let contextB: BrowserContext;
-  let pageA: Page;
-  let pageB: Page;
+  let fixture: TwoUserFixture;
 
   test.beforeAll(async ({ browser }) => {
-    contextA = await browser.newContext();
-    contextB = await browser.newContext();
-    pageA = await contextA.newPage();
-    pageB = await contextB.newPage();
+    fixture = await setupTwoUsers(browser, 'Alice', 'Bob');
   });
 
   test.afterAll(async () => {
-    await contextA.close();
-    await contextB.close();
+    await teardownTwoUsers(fixture);
+  });
+
+  test('should create two distinct identities', async () => {
+    expect(fixture.didA).toMatch(/^did:key:/);
+    expect(fixture.didB).toMatch(/^did:key:/);
+    expect(fixture.didA).not.toBe(fixture.didB);
   });
 
   test('should send and accept a friend request between two users', async () => {
-    // Create identities
-    const didA = await createIdentity(pageA, 'Alice');
-    const didB = await createIdentity(pageB, 'Bob');
+    // Alice sends friend request to Bob using his DID
+    await sendFriendRequest(fixture.pageA, fixture.didB);
 
-    expect(didA).toMatch(/^did:key:/);
-    expect(didB).toMatch(/^did:key:/);
-    expect(didA).not.toBe(didB);
+    // Bob accepts the incoming request
+    await acceptFriendRequest(fixture.pageB);
 
-    // Alice sends friend request to Bob
-    // Navigate to Friends tab and paste Bob's DID
-    const friendsLinkA = pageA.getByText('Friends');
-    if (await friendsLinkA.isVisible()) {
-      await friendsLinkA.click();
-    }
+    // Verify Alice can see Bob in her friends list
+    await fixture.pageA.locator('[accessibilityLabel="Friends"]').first().click();
+    await fixture.pageA.getByText('All').first().click();
 
-    // Wait for relay connection + send request
-    await pageA.waitForTimeout(3000);
+    // Bob's name should appear in the friends list
+    await expect(fixture.pageA.getByText('Bob')).toBeVisible({ timeout: RELAY_DELIVERY_TIMEOUT });
 
-    const addInput = pageA.getByPlaceholder(/DID|paste/i);
-    if (await addInput.isVisible()) {
-      await addInput.fill(didB);
-      const sendBtn = pageA.getByText('Send Request');
-      if (await sendBtn.isVisible()) {
-        await sendBtn.click();
-      }
-    }
+    // Verify Bob can see Alice in his friends list
+    await fixture.pageB.getByText('All').first().click();
+    await expect(fixture.pageB.getByText('Alice')).toBeVisible({ timeout: RELAY_DELIVERY_TIMEOUT });
+  });
 
-    // Bob should see the request (wait for relay delivery)
-    await pageB.waitForTimeout(5000);
+  test('should show a conversation after becoming friends', async () => {
+    // Navigate Alice to home — a conversation with Bob should exist
+    await fixture.pageA.locator('[accessibilityLabel="Home"]').click();
 
-    const friendsLinkB = pageB.getByText('Friends');
-    if (await friendsLinkB.isVisible()) {
-      await friendsLinkB.click();
-    }
-
-    // Look for pending requests
-    const pendingTab = pageB.getByText('Pending');
-    if (await pendingTab.isVisible()) {
-      await pendingTab.click();
-    }
-
-    // Accept the request
-    const acceptBtn = pageB.getByText('Accept');
-    if (await acceptBtn.isVisible({ timeout: 10_000 })) {
-      await acceptBtn.click();
-    }
-
-    // Both should now show friendship
-    await pageA.waitForTimeout(3000);
-    await pageB.waitForTimeout(3000);
-
-    // Verify conversations exist on both sides
-    // (The exact UI text depends on the app state)
+    // Wait for the conversation list to populate
+    await expect(
+      fixture.pageA.getByText('Bob').or(fixture.pageA.getByText('Conversations'))
+    ).toBeVisible({ timeout: 10_000 });
   });
 });
