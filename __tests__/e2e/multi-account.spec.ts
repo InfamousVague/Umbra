@@ -39,7 +39,8 @@ test.describe('Multi-Account', () => {
     await expect(
       page.getByRole('button', { name: 'Create New Account' })
         .or(page.getByText('Your Accounts'))
-    ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
+        .first()
+    ).toBeVisible({ timeout: APP_READY_TIMEOUT });
 
     // Create the second account
     await createIdentity(page, 'SecondAccount');
@@ -71,7 +72,8 @@ test.describe('Multi-Account', () => {
     await expect(
       page.getByText('Welcome to Umbra')
         .or(page.getByText('Enter your PIN'))
-    ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
+        .first()
+    ).toBeVisible({ timeout: APP_READY_TIMEOUT });
   });
 
   test('should show stored accounts on auth screen after logout', async ({ page }) => {

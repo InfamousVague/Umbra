@@ -19,7 +19,8 @@ test.describe('Persistence', () => {
       page.getByText('Welcome to Umbra')
         .or(page.getByText('Loading'))
         .or(page.getByText('Your Accounts'))
-    ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
+        .first()
+    ).toBeVisible({ timeout: APP_READY_TIMEOUT });
   });
 
   test('should clear all data via Settings', async ({ page }) => {

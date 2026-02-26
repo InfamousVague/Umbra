@@ -87,7 +87,8 @@ test.describe('Full Flow', () => {
     await expect(
       pageA.getByRole('button', { name: 'Create New Account' })
         .or(pageA.getByText('Your Accounts'))
-    ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
+        .first()
+    ).toBeVisible({ timeout: APP_READY_TIMEOUT });
 
     await createIdentity(pageA, 'Charlie');
 
@@ -107,7 +108,8 @@ test.describe('Full Flow', () => {
       pageA.getByText('Welcome to Umbra')
         .or(pageA.getByText('Bob'))
         .or(pageA.getByText('Enter your PIN'))
-    ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
+        .first()
+    ).toBeVisible({ timeout: APP_READY_TIMEOUT });
 
     // Navigate to home and verify Bob's conversation + message still exist
     await pageA.locator('[accessibilityLabel="Home"]').click();

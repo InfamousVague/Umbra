@@ -15,10 +15,13 @@ test.describe('File Sharing', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    // Wait for app to load
+    // Wait for app to load — use getByRole for the button to avoid strict mode
+    // violations from mobile+desktop dual layout
     await expect(
-      page.getByText(/Create New Account|Welcome to Umbra/i)
+      page.getByRole('button', { name: 'Create New Account' })
         .or(page.getByText('Your Accounts'))
+        .or(page.getByText('Welcome to Umbra'))
+        .first()
     ).toBeVisible({ timeout: 20_000 });
   });
 

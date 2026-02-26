@@ -40,6 +40,7 @@ test.describe('Identity', () => {
     await expect(
       page.getByText('Welcome to Umbra')
         .or(page.getByText('Your Accounts'))
-    ).first().toBeVisible({ timeout: 60_000 });
+        .first()
+    ).toBeVisible({ timeout: 60_000 });
   });
 });

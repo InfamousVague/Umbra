@@ -34,7 +34,8 @@ export async function waitForAppReady(page: Page): Promise<'auth' | 'main'> {
     page.getByRole('button', { name: 'Create New Account' })
       .or(page.getByText('Your Accounts'))
       .or(page.getByText('Welcome to Umbra'))
-  ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
+      .first()
+  ).toBeVisible({ timeout: APP_READY_TIMEOUT });
 
   // Determine which state we landed in
   const isAuth = await page.getByRole('button', { name: 'Create New Account' })
@@ -90,7 +91,8 @@ export async function createIdentity(
     page.getByText('Security PIN')
       .or(page.getByText('Choose a Username'))
       .or(page.getByText('Account Created!'))
-  ).first().toBeVisible({ timeout: 10_000 });
+      .first()
+  ).toBeVisible({ timeout: 10_000 });
 
   const pinVisible = await page.getByText('Security PIN').first().isVisible().catch(() => false);
   if (pinVisible) {
