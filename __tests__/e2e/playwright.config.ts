@@ -6,6 +6,10 @@
  */
 
 import { defineConfig, devices } from '@playwright/test';
+import path from 'path';
+
+// Project root is two levels up from __tests__/e2e/
+const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
 export default defineConfig({
   testDir: '.',
@@ -14,7 +18,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: 'html',
+  reporter: [['html', { outputFolder: path.join(PROJECT_ROOT, 'playwright-report') }]],
+  outputDir: path.join(PROJECT_ROOT, 'test-results'),
   timeout: 60_000,
 
   use: {
@@ -33,6 +38,7 @@ export default defineConfig({
   /* Start the Expo web server before running tests */
   webServer: {
     command: 'npx expo start --web --port 8081',
+    cwd: PROJECT_ROOT,
     url: 'http://localhost:8081',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
