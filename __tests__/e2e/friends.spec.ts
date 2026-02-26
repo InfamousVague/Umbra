@@ -58,7 +58,7 @@ test.describe('Friends', () => {
 
     // Wait for the conversation list to populate
     await expect(
-      fixture.pageA.getByText('Bob').or(fixture.pageA.getByText('Conversations'))
+      fixture.pageA.getByText('Bob').first()
     ).toBeVisible({ timeout: 10_000 });
   });
 });

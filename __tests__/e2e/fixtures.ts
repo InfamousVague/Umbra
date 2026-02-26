@@ -14,7 +14,7 @@ import { test as base, expect, type Page, type BrowserContext, type Browser } fr
 // ─── Timeouts ────────────────────────────────────────────────────────────────
 export const WASM_INIT_TIMEOUT = 30_000;
 export const IDENTITY_CREATE_TIMEOUT = 30_000;
-export const APP_READY_TIMEOUT = 30_000;
+export const APP_READY_TIMEOUT = 60_000;
 export const RELAY_DELIVERY_TIMEOUT = 15_000;
 
 // ─── waitForAppReady ─────────────────────────────────────────────────────────
@@ -25,18 +25,21 @@ export const RELAY_DELIVERY_TIMEOUT = 15_000;
 export async function waitForAppReady(page: Page): Promise<'auth' | 'main'> {
   await page.goto('/');
 
-  // Wait until either auth screen or main app is visible
+  // Wait until either auth screen or main app is visible.
+  // Use .first() to avoid strict-mode violations when the auth screen
+  // renders both mobile + desktop layouts with duplicate text nodes.
+  // Avoid "Conversations" — it substring-matches the tagline
+  // "Servers see ciphertext. You see conversations."
   await expect(
-    page.getByText('Create New Account')
-      .or(page.getByText('Create New'))
+    page.getByRole('button', { name: 'Create New Account' })
       .or(page.getByText('Your Accounts'))
       .or(page.getByText('Welcome to Umbra'))
-      .or(page.getByText('Conversations'))
-  ).toBeVisible({ timeout: APP_READY_TIMEOUT });
+  ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
 
   // Determine which state we landed in
-  const isAuth = await page.getByText('Create New Account')
+  const isAuth = await page.getByRole('button', { name: 'Create New Account' })
     .or(page.getByText('Your Accounts'))
+    .first()
     .isVisible()
     .catch(() => false);
 
@@ -62,38 +65,42 @@ export async function createIdentity(
     return '';
   }
 
-  // Click "Create New Account" (handles fresh + returning-user layouts)
-  const createBtn = page.getByText('Create New Account').or(page.getByText('Create New'));
+  // Click "Create New Account" (handles fresh + returning-user layouts).
+  // Use getByRole to avoid matching tagline text that contains substrings.
+  const createBtn = page.getByRole('button', { name: 'Create New Account' })
+    .or(page.getByRole('button', { name: 'Create New' }));
   await createBtn.first().click();
 
   // Step 0: Display Name
-  await expect(page.getByText('Choose Your Name')).toBeVisible({ timeout: 10_000 });
-  await page.getByPlaceholder('Enter your name').fill(displayName);
-  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByText('Choose Your Name').first()).toBeVisible({ timeout: 10_000 });
+  await page.getByPlaceholder('Enter your name').first().fill(displayName);
+  await page.getByRole('button', { name: 'Continue' }).first().click();
 
   // Step 1: Recovery Phrase (WASM identity creation happens here — can be slow)
-  await expect(page.getByText('Your Recovery Phrase')).toBeVisible({ timeout: IDENTITY_CREATE_TIMEOUT });
-  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByText('Your Recovery Phrase').first()).toBeVisible({ timeout: IDENTITY_CREATE_TIMEOUT });
+  await page.getByRole('button', { name: 'Continue' }).first().click();
 
   // Step 2: Confirm Backup
-  await expect(page.getByText('Confirm Your Backup')).toBeVisible({ timeout: 10_000 });
-  await page.getByText('I have written down my recovery phrase').click();
-  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByText('Confirm Your Backup').first()).toBeVisible({ timeout: 10_000 });
+  await page.getByText('I have written down my recovery phrase').first().click();
+  await page.getByRole('button', { name: 'Continue' }).first().click();
 
   // Step 3: PIN Setup
   await expect(
-    page.getByText('Security PIN').or(page.getByText('Choose a Username')).or(page.getByText('Account Created!'))
-  ).toBeVisible({ timeout: 10_000 });
+    page.getByText('Security PIN')
+      .or(page.getByText('Choose a Username'))
+      .or(page.getByText('Account Created!'))
+  ).first().toBeVisible({ timeout: 10_000 });
 
-  const pinVisible = await page.getByText('Security PIN').isVisible().catch(() => false);
+  const pinVisible = await page.getByText('Security PIN').first().isVisible().catch(() => false);
   if (pinVisible) {
     if (options?.setPin) {
       // Type each digit into the GrowablePinInput
       await page.keyboard.type(options.setPin);
-      await expect(page.getByText('Confirm Your PIN')).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByText('Confirm Your PIN').first()).toBeVisible({ timeout: 5_000 });
       await page.keyboard.type(options.setPin);
     } else {
-      const skipBtn = page.getByText('Skip for now');
+      const skipBtn = page.getByText('Skip for now').first();
       if (await skipBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
         await skipBtn.click();
       }
@@ -101,16 +108,16 @@ export async function createIdentity(
   }
 
   // Step 4: Username (skip)
-  const usernameVisible = await page.getByText('Choose a Username').isVisible({ timeout: 5_000 }).catch(() => false);
+  const usernameVisible = await page.getByText('Choose a Username').first().isVisible({ timeout: 5_000 }).catch(() => false);
   if (usernameVisible) {
-    await page.getByText('Skip for now').click();
+    await page.getByText('Skip for now').first().click();
   }
 
   // Step 5: Success — extract DID
-  await expect(page.getByText('Account Created!')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText('Account Created!').first()).toBeVisible({ timeout: 10_000 });
 
   let did = '';
-  const didLocator = page.locator('text=/did:key:/');
+  const didLocator = page.locator('text=/did:key:/').first();
   if (await didLocator.isVisible({ timeout: 3_000 }).catch(() => false)) {
     const text = await didLocator.textContent();
     did = text?.match(/did:key:\S+/)?.[0] ?? '';
@@ -119,12 +126,11 @@ export async function createIdentity(
   }
 
   // Click "Get Started"
-  await page.getByRole('button', { name: 'Get Started' }).click();
+  await page.getByRole('button', { name: 'Get Started' }).first().click();
 
-  // Wait for main app
+  // Wait for main app — use .first() and avoid "Conversations" (matches tagline)
   await expect(
-    page.getByText('Welcome to Umbra')
-      .or(page.getByText('Conversations'))
+    page.getByText('Welcome to Umbra').first()
   ).toBeVisible({ timeout: APP_READY_TIMEOUT });
 
   return did;

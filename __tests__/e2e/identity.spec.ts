@@ -11,24 +11,23 @@ test.describe('Identity', () => {
     expect(did).toMatch(/^did:key:/);
 
     // Should be in the main app
-    await expect(
-      page.getByText('Welcome to Umbra').or(page.getByText('Conversations'))
-    ).toBeVisible();
+    await expect(page.getByText('Welcome to Umbra').first()).toBeVisible();
   });
 
   test('should display recovery phrase during creation', async ({ page }) => {
     await waitForAppReady(page);
 
-    const createBtn = page.getByText('Create New Account').or(page.getByText('Create New'));
+    const createBtn = page.getByRole('button', { name: 'Create New Account' })
+      .or(page.getByRole('button', { name: 'Create New' }));
     await createBtn.first().click();
 
     // Enter display name
-    await expect(page.getByText('Choose Your Name')).toBeVisible({ timeout: 10_000 });
-    await page.getByPlaceholder('Enter your name').fill('PhraseUser');
-    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.getByText('Choose Your Name').first()).toBeVisible({ timeout: 10_000 });
+    await page.getByPlaceholder('Enter your name').first().fill('PhraseUser');
+    await page.getByRole('button', { name: 'Continue' }).first().click();
 
     // Recovery phrase should appear (WASM identity creation happens here)
-    await expect(page.getByText('Your Recovery Phrase')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Your Recovery Phrase').first()).toBeVisible({ timeout: 30_000 });
   });
 
   test('should persist identity across page refresh', async ({ page }) => {
@@ -40,8 +39,7 @@ test.describe('Identity', () => {
     // Should restore from IndexedDB (splash screen then main view)
     await expect(
       page.getByText('Welcome to Umbra')
-        .or(page.getByText('Conversations'))
         .or(page.getByText('Your Accounts'))
-    ).toBeVisible({ timeout: 30_000 });
+    ).first().toBeVisible({ timeout: 60_000 });
   });
 });

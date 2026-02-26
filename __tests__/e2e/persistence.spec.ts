@@ -18,9 +18,8 @@ test.describe('Persistence', () => {
     await expect(
       page.getByText('Welcome to Umbra')
         .or(page.getByText('Loading'))
-        .or(page.getByText('Conversations'))
         .or(page.getByText('Your Accounts'))
-    ).toBeVisible({ timeout: APP_READY_TIMEOUT });
+    ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
   });
 
   test('should clear all data via Settings', async ({ page }) => {

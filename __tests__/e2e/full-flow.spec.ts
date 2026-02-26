@@ -85,10 +85,9 @@ test.describe('Full Flow', () => {
 
     // Should go to auth screen
     await expect(
-      pageA.getByText('Create New Account')
+      pageA.getByRole('button', { name: 'Create New Account' })
         .or(pageA.getByText('Your Accounts'))
-        .or(pageA.getByText('Create New'))
-    ).toBeVisible({ timeout: APP_READY_TIMEOUT });
+    ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
 
     await createIdentity(pageA, 'Charlie');
 
@@ -103,12 +102,12 @@ test.describe('Full Flow', () => {
     await pageA.getByText('Alice').click();
 
     // Wait for app to reload as Alice
+    // Avoid "Conversations" — it substring-matches the tagline
     await expect(
       pageA.getByText('Welcome to Umbra')
-        .or(pageA.getByText('Conversations'))
         .or(pageA.getByText('Bob'))
         .or(pageA.getByText('Enter your PIN'))
-    ).toBeVisible({ timeout: APP_READY_TIMEOUT });
+    ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
 
     // Navigate to home and verify Bob's conversation + message still exist
     await pageA.locator('[accessibilityLabel="Home"]').click();

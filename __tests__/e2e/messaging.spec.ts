@@ -23,7 +23,7 @@ test.describe('Messaging', () => {
 
     // A new user with no friends should see the welcome/empty state
     await expect(
-      page.getByText('Welcome to Umbra').or(page.getByText('Conversations'))
+      page.getByText('Welcome to Umbra').first()
     ).toBeVisible({ timeout: 10_000 });
   });
 

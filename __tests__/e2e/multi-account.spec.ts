@@ -37,10 +37,9 @@ test.describe('Multi-Account', () => {
 
     // Should navigate back to auth screen
     await expect(
-      page.getByText('Create New Account')
+      page.getByRole('button', { name: 'Create New Account' })
         .or(page.getByText('Your Accounts'))
-        .or(page.getByText('Create New'))
-    ).toBeVisible({ timeout: APP_READY_TIMEOUT });
+    ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
 
     // Create the second account
     await createIdentity(page, 'SecondAccount');
@@ -68,11 +67,11 @@ test.describe('Multi-Account', () => {
 
     // App should reload as SwitchAlice (provider tree remounts)
     // Wait for the app to be ready again
+    // Avoid "Conversations" — it substring-matches the tagline
     await expect(
       page.getByText('Welcome to Umbra')
-        .or(page.getByText('Conversations'))
         .or(page.getByText('Enter your PIN'))
-    ).toBeVisible({ timeout: APP_READY_TIMEOUT });
+    ).first().toBeVisible({ timeout: APP_READY_TIMEOUT });
   });
 
   test('should show stored accounts on auth screen after logout', async ({ page }) => {
