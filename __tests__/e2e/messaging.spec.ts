@@ -1,70 +1,92 @@
 /**
- * Messaging E2E Tests — Send, edit, delete messages.
+ * Messaging E2E Tests — Send messages between two users.
  *
- * These tests assume an identity has been created and friends exist.
- * In a real CI setup, use fixtures to set up test data.
+ * Uses two browser contexts with established friendship (via beforeAll).
+ * Tests deterministic message flow rather than relying on pre-existing state.
  */
 
-import { test, expect } from '@playwright/test';
+import {
+  test, expect,
+  setupTwoUsers,
+  teardownTwoUsers,
+  sendFriendRequest,
+  acceptFriendRequest,
+  createIdentity,
+  waitForAppReady,
+  type TwoUserFixture,
+  RELAY_DELIVERY_TIMEOUT,
+} from './fixtures';
 
 test.describe('Messaging', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    // Wait for identity restoration or create new
-    await page.waitForTimeout(5000);
+  test('should display empty conversation state for new user', async ({ page }) => {
+    await createIdentity(page, 'LonelyUser');
+
+    // A new user with no friends should see the welcome/empty state
+    await expect(
+      page.getByText('Welcome to Umbra').first()
+    ).toBeVisible({ timeout: 10_000 });
   });
 
-  test('should display empty conversation state', async ({ page }) => {
-    // If the user has no conversations, the empty state should show
-    const welcomeText = page.getByText('Welcome to Umbra');
-    const hasConversations = !(await welcomeText.isVisible({ timeout: 5_000 }).catch(() => false));
+  test.describe('between friends', () => {
+    let fixture: TwoUserFixture;
 
-    if (!hasConversations) {
-      await expect(welcomeText).toBeVisible();
-    }
-  });
+    test.beforeAll(async ({ browser }) => {
+      // Set up two users and make them friends
+      fixture = await setupTwoUsers(browser, 'MsgAlice', 'MsgBob');
 
-  test('should send a message in an existing conversation', async ({ page }) => {
-    // Skip if no conversations exist
-    const welcomeText = page.getByText('Welcome to Umbra');
-    if (await welcomeText.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      test.skip();
-      return;
-    }
+      // Establish friendship
+      await sendFriendRequest(fixture.pageA, fixture.didB);
+      await acceptFriendRequest(fixture.pageB);
 
-    // Type and send a message
-    const input = page.getByPlaceholder(/message|type/i);
-    if (await input.isVisible()) {
-      await input.fill('Hello from Playwright E2E test!');
+      // Navigate both back to home
+      await fixture.pageA.locator('[accessibilityLabel="Home"]').click();
+      await fixture.pageB.locator('[accessibilityLabel="Home"]').click();
+    });
+
+    test.afterAll(async () => {
+      await teardownTwoUsers(fixture);
+    });
+
+    test('should send a message and have it appear', async () => {
+      // Alice clicks on Bob's conversation
+      await expect(fixture.pageA.getByText('MsgBob')).toBeVisible({ timeout: RELAY_DELIVERY_TIMEOUT });
+      await fixture.pageA.getByText('MsgBob').click();
+
+      // Type and send a message
+      const input = fixture.pageA.getByPlaceholder(/message|type/i);
+      await expect(input).toBeVisible({ timeout: 5_000 });
+      await input.fill('Hello from Alice!');
       await input.press('Enter');
 
-      // Message should appear in the chat area
-      await expect(page.getByText('Hello from Playwright E2E test!')).toBeVisible({ timeout: 5_000 });
-    }
-  });
+      // Message should appear in Alice's chat area
+      await expect(fixture.pageA.getByText('Hello from Alice!')).toBeVisible({ timeout: 5_000 });
+    });
 
-  test('should persist messages across page refresh', async ({ page }) => {
-    // Skip if no conversations exist
-    const welcomeText = page.getByText('Welcome to Umbra');
-    if (await welcomeText.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      test.skip();
-      return;
-    }
+    test('should deliver message to the other user', async () => {
+      // Bob clicks on Alice's conversation
+      await expect(fixture.pageB.getByText('MsgAlice')).toBeVisible({ timeout: RELAY_DELIVERY_TIMEOUT });
+      await fixture.pageB.getByText('MsgAlice').click();
 
-    // Send a unique message
-    const uniqueMsg = `E2E-${Date.now()}`;
-    const input = page.getByPlaceholder(/message|type/i);
-    if (await input.isVisible()) {
-      await input.fill(uniqueMsg);
+      // Bob should see Alice's message (delivered via relay)
+      await expect(fixture.pageB.getByText('Hello from Alice!')).toBeVisible({
+        timeout: RELAY_DELIVERY_TIMEOUT,
+      });
+    });
+
+    test('should send and receive in both directions', async () => {
+      // Bob sends a reply
+      const input = fixture.pageB.getByPlaceholder(/message|type/i);
+      await expect(input).toBeVisible({ timeout: 5_000 });
+      await input.fill('Hey Alice, got your message!');
       await input.press('Enter');
-      await expect(page.getByText(uniqueMsg)).toBeVisible({ timeout: 5_000 });
-    }
 
-    // Refresh and verify persistence
-    await page.reload();
-    await page.waitForTimeout(5000); // Wait for IndexedDB restore
+      // Bob sees his own message
+      await expect(fixture.pageB.getByText('Hey Alice, got your message!')).toBeVisible({ timeout: 5_000 });
 
-    // Message should still be there
-    await expect(page.getByText(uniqueMsg)).toBeVisible({ timeout: 15_000 });
+      // Alice receives Bob's reply
+      await expect(fixture.pageA.getByText('Hey Alice, got your message!')).toBeVisible({
+        timeout: RELAY_DELIVERY_TIMEOUT,
+      });
+    });
   });
 });

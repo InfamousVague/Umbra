@@ -248,29 +248,30 @@ function ChatSidebarInner({
               </>
             ) : (
               conversations.map((c) => (
-                <ConversationListItem
-                  key={c.id}
-                  name={c.name}
-                  lastMessage={c.last}
-                  timestamp={c.time}
-                  unreadCount={c.unread}
-                  online={c.online}
-                  pinned={c.pinned}
-                  status={c.status as any}
-                  active={c.id === activeId}
-                  onPress={() => onSelectConversation(c.id)}
-                  avatar={
-                    c.group ? (
-                      <AvatarGroup max={2} size="sm" spacing={10} onSurface>
-                        {c.group.map((name) => (
-                          <Avatar key={name} name={name} size="sm" />
-                        ))}
-                      </AvatarGroup>
-                    ) : (
-                      <Avatar name={c.name} size="md" onSurface status={c.online ? 'online' : undefined} />
-                    )
-                  }
-                />
+                <View key={c.id} testID={`conversation-${c.id}`}>
+                  <ConversationListItem
+                    name={c.name}
+                    lastMessage={c.last}
+                    timestamp={c.time}
+                    unreadCount={c.unread}
+                    online={c.online}
+                    pinned={c.pinned}
+                    status={c.status as any}
+                    active={c.id === activeId}
+                    onPress={() => onSelectConversation(c.id)}
+                    avatar={
+                      c.group ? (
+                        <AvatarGroup max={2} size="sm" spacing={10} onSurface>
+                          {c.group.map((name) => (
+                            <Avatar key={name} name={name} size="sm" />
+                          ))}
+                        </AvatarGroup>
+                      ) : (
+                        <Avatar name={c.name} size="md" onSurface status={c.online ? 'online' : undefined} />
+                      )
+                    }
+                  />
+                </View>
               ))
             )}
           </ScrollView>
